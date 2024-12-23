@@ -1,13 +1,26 @@
 import asyncio
 from playwright.async_api import async_playwright
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
+from pathlib import Path
+import sys
 import random
+import sys
+
+# 添加项目根目录到Python路径
+sys.path.append(str(Path(__file__).parent.parent.parent))
 from utils.logger import setup_logger
 
+
+config_path = os.path.join(os.path.dirname(__file__), '../../conf/zhipin.json')
+with open(config_path, 'r', encoding='utf-8') as f:
+    config = json.load(f)
+
+logger = setup_logger(name=config['log_name'], level= config['log_level'])
+logger.debug(f"加载配置文件: {config}")
 # 初始化logger
-logger = setup_logger()
+logger = setup_logger('zhipin', level='DEBUG')
 
 class BossSelectors:
     """BOSS直聘网站元素选择器"""
@@ -34,8 +47,8 @@ class BossSelectors:
 
 class BossLogin:
     def __init__(self):
-        self.cookie_file = "boss_cookies.json"
-        self.login_url = "https://zhipin.com"
+        self.cookie_file = config['cookies_file']
+        self.login_url = config['login_url']
         logger.debug("初始化BossLogin实例")
         
     async def init_browser(self):
@@ -67,7 +80,7 @@ class BossLogin:
         
         logger.debug("启动浏览器")
         self.browser = await self.playwright.chromium.launch(
-            headless=False,
+            headless=config['headless'],
             args=browser_args
         )
         
@@ -212,7 +225,14 @@ class BossLogin:
             await self.page.wait_for_selector(BossSelectors.MINI_APP_CONTAINER)
             await self.page.wait_for_selector(BossSelectors.MINI_APP_QRCODE)
             await self.random_delay(0.5, 1)
-            
+            # 获取并打印二维码图片链接
+            qrcode_element = await self.page.query_selector(BossSelectors.MINI_APP_QRCODE)
+            if qrcode_element:
+                qrcode_url = await qrcode_element.get_attribute('src')
+                logger.info(f"微信小程序二维码链接: {qrcode_url}")
+            else:
+                logger.warning("未找到二维码图片元素")
+
             logger.debug("等待用户扫码登录")
             # 等待用户扫码登录成功的标志 - 检查用户头像和下拉菜单是否出现
             logger.debug("等待用户头像和菜单出现")

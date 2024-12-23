@@ -3,5 +3,6 @@
     "home_url": "https://www.liepin.com/",
     "cookies_file": "cookies/liepin_cookies.json",
     "headless": true,
+    "log_name": "liepin",
     "log_level": "DEBUG"
 }

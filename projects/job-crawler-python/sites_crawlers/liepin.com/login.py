@@ -16,7 +16,7 @@ config_path = os.path.join(os.path.dirname(__file__), '../../conf/liepin.json')
 with open(config_path, 'r', encoding='utf-8') as f:
     config = json.load(f)
 
-logger = setup_logger(name='liepin', level= config['log_level'])
+logger = setup_logger(name=config['log_name'], level= config['log_level'])
 logger.debug(f"加载配置文件: {config}")
 
 class LiepinSelectors:

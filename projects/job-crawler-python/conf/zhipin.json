@@ -1,0 +1,8 @@
+{
+    "login_url": "https://zhipin.com",
+    "home_url": "https://zhipin.com",
+    "cookies_file": "cookies/zhipin_cookies.json",
+    "headless": true,
+    "log_name": "zhipin",
+    "log_level": "INFO"
+}

@@ -3,13 +3,12 @@ import logging
 from typing import List, Dict, Optional
 import json
 import time
-from login import BossLogin, setup_logger
+from login import BossLogin, logger
 from asyncio import Semaphore
 import random
 from datetime import datetime
-
-logger = setup_logger()
-
+import sys
+import os
 class BossSearchSelectors:
     """搜索相关的选择器"""
     # 列表页
@@ -34,8 +33,7 @@ class BossSearchSelectors:
     DETAIL_BENEFITS = '.job-tags span'  # 福利标签
     DETAIL_UPDATE_TIME = '.gray'  # 更新时间
     
-    # TODO: 需要您提供实际的选择器
-    SEARCH_INPUT = '.ipt-search'  # 搜索输入框
+    SEARCH_INPUT = '.ipt-wrap .ipt-search'  # 搜索输入框
     SEARCH_BUTTON = '.btn-search'  # 搜索按钮
     
     # 职位详情相关
@@ -141,17 +139,17 @@ class BossSearcher:
             # 等待搜索输入框出现
             logger.debug("等待搜索输入框出现")
             await self.page.wait_for_selector(BossSearchSelectors.SEARCH_INPUT)
-            
+            logger.debug("搜索输入框出现")
             # 清空输入框
             await self.page.click(BossSearchSelectors.SEARCH_INPUT, click_count=3)
             await self.page.keyboard.press('Backspace')
-            
+            logger.debug("清空输入框")
             # 模拟人类输入行为
             logger.debug("开始输入关键词")
             for char in keyword:
                 await self.page.type(BossSearchSelectors.SEARCH_INPUT, char)
                 await self.random_delay(0.1, 0.3)
-            
+            logger.debug("输入关键词完成")
             # 等待一小段时间,模拟人类思考
             await self.random_delay(0.5, 1)
             
@@ -477,8 +475,12 @@ class BossSearcher:
             # 清理关键词和地区中的特殊字符
             keyword = keyword.replace('/', '_').replace('\\', '_').strip()
             location = location.replace('/', '_').replace('\\', '_').strip() if location else "全国"
+            # 确保data目录存在
+            data_dir = os.path.join('data')
+            if not os.path.exists(data_dir):
+                os.makedirs(data_dir)
             # 生成文件名
-            filename = f"zhipin_{keyword}_{location}_{current_time}.json"
+            filename = os.path.join(data_dir, f"zhipin_{keyword}_{location}_{current_time}.json")
         
         logger.info(f"开始保存搜索结果到文件: {filename}")
         
@@ -659,7 +661,7 @@ async def main():
         
         searcher = BossSearcher(boss_login)
         results = await searcher.search(
-            keyword="数据产品经理",
+            keyword="数据仓库架构师",
             location="北京",
             limit=3  # 限制最多抓取100条数据
         )

@@ -4,10 +4,7 @@ from typing import List, Dict, Optional
 import json
 from datetime import datetime
 import random
-from login import LiepinLogin
-from utils.logger import setup_logger
-
-logger = setup_logger('liepin')
+from login import LiepinLogin,logger
 
 class LiepinSearchSelectors:
     """猎聘网搜索相关的选择器"""
