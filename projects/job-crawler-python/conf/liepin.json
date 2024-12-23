@@ -1,0 +1,7 @@
+{
+    "login_url": "https://www.liepin.com/login?backUrl=https%3A%2F%2Fwww.liepin.com%2F",
+    "home_url": "https://www.liepin.com/",
+    "cookies_file": "cookies/liepin_cookies.json",
+    "headless": true,
+    "log_level": "DEBUG"
+}
