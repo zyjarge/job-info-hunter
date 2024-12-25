@@ -1,0 +1,9 @@
+{
+    "host": "localhost",
+    "port": 5672,
+    "username": "guest",
+    "password": "guest",
+    "queue_name": "crawler-jobs",
+    "exchange": "job_crawler",
+    "routing_key": "crawler.job"
+} 
