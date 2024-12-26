@@ -3,11 +3,12 @@
 
 import json
 import logging
+import os
 from typing import Dict, Any
 
-from .dao.es_dao import ElasticsearchDAO
-from .dao.redis_dao import RedisDAO
-from .monitor.monitor_service import MonitorService
+from dao.es_dao import ElasticsearchDAO
+from dao.redis_dao import RedisDAO
+from monitor.monitor_service import MonitorService
 import aio_pika
 
 logging.basicConfig(level=logging.INFO)
@@ -23,6 +24,9 @@ class CrawlDataHandler:
         self.es_dao = ElasticsearchDAO()
         self.redis_dao = RedisDAO()
         self.monitor_service = MonitorService()
+
+        # 获取当前文件所在目录
+        self.base_dir = os.path.dirname(os.path.abspath(__file__))
 
     async def handle_crawl_result(self, message: Dict[str, Any]) -> bool:
         """
@@ -40,7 +44,15 @@ class CrawlDataHandler:
             )
 
             # 1. 存储到 Elasticsearch
-            es_result = await self.es_dao.save_job_data(message)
+            # 判断消息是否为列表或单个职位数据
+            job_data = (
+                message
+                if isinstance(message, list)
+                or not any(isinstance(v, list) for v in message.values())
+                else message.get("data", [])
+            )
+
+            es_result = await self.es_dao.save_job_data(job_data)
             if not es_result:
                 logger.error("保存数据到 Elasticsearch 失败")
                 return False
@@ -49,13 +61,20 @@ class CrawlDataHandler:
             await self.redis_dao.cache_job_data(message)
 
             # 3. 发送监控指标 (暂时只打日志)
+            job_count = len(job_data) if isinstance(job_data, list) else 1
             await self.monitor_service.send_metrics(
                 metric_name="crawl_data_processed",
-                value=1,
-                tags={"source": message.get("source", "unknown")},
+                value=job_count,
+                tags={
+                    "source": (
+                        job_data[0].get("site_id", "unknown")
+                        if isinstance(job_data, list)
+                        else job_data.get("site_id", "unknown")
+                    )
+                },
             )
 
-            logger.info("爬虫结果处理成功")
+            logger.info(f"成功处理 {job_count} 条职位数据")
             return True
 
         except Exception as e:
@@ -69,7 +88,10 @@ class CrawlDataHandler:
         logger.info("Starting crawl data handler service...")
         try:
             # 从配置文件读取MQ配置
-            with open("conf/mq.json", "r") as f:
+            config_path = os.path.join(self.base_dir, "conf", "mq.json")
+            logger.info(f"Reading MQ config from: {config_path}")
+
+            with open(config_path, "r") as f:
                 mq_config = json.load(f)
 
             # 构建RabbitMQ连接URL
@@ -83,7 +105,9 @@ class CrawlDataHandler:
                 channel = await connection.channel()
 
                 # 声明队列
-                queue = await channel.declare_queue("crawl_results", durable=True)
+                queue = await channel.declare_queue(
+                    mq_config["queue"]["name"], durable=mq_config["queue"]["durable"]
+                )
 
                 logger.info("开始监听爬虫结果队列...")
 
