@@ -20,10 +20,10 @@ async def send_test_message():
 
         # 测试消息
         message = {
-            "site_id": "zhipin.com",
-            "keyword": "数据治理",
+            "site_id": "liepin.com",
+            "keyword": "数据中台产品经理",
             "location": "北京",
-            "limit": 10,
+            "limit": 5,
         }
 
         # 发送消息
