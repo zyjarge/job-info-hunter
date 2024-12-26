@@ -1,0 +1,36 @@
+{
+    "site_mapping": {
+        "zhipin.com": {
+            "module": "sites_crawlers.zhipin.search",
+            "class": "BossSearcher",
+            "login_module": "sites_crawlers.zhipin.login",
+            "login_class": "BossLogin",
+            "site_id": "zhipin.com"
+        },
+        "liepin.com": {
+            "module": "sites_crawlers.liepin.search",
+            "class": "LiepinSearcher",
+            "login_module": "sites_crawlers.liepin.login",
+            "login_class": "LiepinLogin",
+            "site_id": "liepin.com"
+        },
+        "dummy.com": {
+            "module": "sites_crawlers.dummy.search",
+            "class": "DummySearcher",
+            "login_module": "sites_crawlers.dummy.login",
+            "login_class": "DummyLogin",
+            "site_id": "dummy.com"
+        }
+    },
+    "mq": {
+        "host": "localhost",
+        "port": 5672,
+        "username": "guest",
+        "password": "guest",
+        "queue_name": "crawler-jobs",
+        "exchange": "job_crawler",
+        "routing_key": "crawler.job",
+        "result_queue_name": "crawler-results",
+        "result_routing_key": "crawler.result"
+    }
+} 

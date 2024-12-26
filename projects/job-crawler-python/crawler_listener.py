@@ -7,6 +7,8 @@ import aio_pika
 from utils.logger import setup_logger
 import sys
 from pathlib import Path
+from utils.mq_publisher import MQPublisher
+from datetime import datetime
 
 # 添加项目根目录到Python路径
 sys.path.append(str(Path(__file__).parent))
@@ -17,25 +19,14 @@ logger = setup_logger("crawler_listener")
 
 class CrawlerListener:
     def __init__(self):
-        # 加载MQ配置
-        with open("conf/mq.json", "r") as f:
-            self.mq_config = json.load(f)
+        # 加载配置
+        with open("conf/config.json", "r") as f:
+            config = json.load(f)
+            self.site_mapping = config["site_mapping"]
+            self.mq_config = config["mq"]
 
-        # 爬虫站点映射配置（约定大于配置）
-        self.site_mapping = {
-            "zhipin.com": {
-                "module": "sites_crawlers.zhipin.search",
-                "class": "BossSearcher",
-                "login_module": "sites_crawlers.zhipin.login",
-                "login_class": "BossLogin",
-            },
-            "liepin.com": {
-                "module": "sites_crawlers.liepin.search",
-                "class": "LiepinSearcher",
-                "login_module": "sites_crawlers.liepin.login",
-                "login_class": "LiepinLogin",
-            },
-        }
+        # 初始化MQ发布者
+        self.publisher = MQPublisher(self.mq_config)
 
         self.connection = None
         self.channel = None
@@ -101,7 +92,14 @@ class CrawlerListener:
                     return
 
                 # 动态导入并实例化爬虫类
-                await self.run_crawler(site_config, keyword, location, limit)
+                results = await self.run_crawler(site_config, keyword, location, limit)
+
+                # 发送爬取结果到消息队列
+                if results:
+                    await self.publisher.publish_results(
+                        results, site_config["site_id"]
+                    )
+                    logger.info(f"已发送 {len(results)} 条数据到结果队列")
 
             except json.JSONDecodeError:
                 logger.error(f"消息格式错误: {body}")
@@ -116,16 +114,18 @@ class CrawlerListener:
         limit: int = 100,
     ):
         """运行指定的爬虫"""
+        results = []
         try:
             # 动态导入登录模块和类
             login_module = importlib.import_module(site_config["login_module"])
             login_class = getattr(login_module, site_config["login_class"])
-            logger.info(f"登录模块: {login_module}, 登录类: {login_class}")
+            logger.debug(f"登录模块: {login_module}, 登录类: {login_class}")
 
             # 动态导入爬虫模块和类
             crawler_module = importlib.import_module(site_config["module"])
             crawler_class = getattr(crawler_module, site_config["class"])
-            logger.info(f"爬虫模块: {crawler_module}, 爬虫类: {crawler_class}")
+            logger.debug(f"爬虫模块: {crawler_module}, 爬虫类: {crawler_class}")
+
             # 实例化登录类
             login_instance = login_class()
             await login_instance.init_browser()
@@ -142,15 +142,14 @@ class CrawlerListener:
                     results = await crawler.search(
                         keyword=keyword, location=location, limit=limit
                     )
-
                     logger.info(f"爬取完成，获取到 {len(results)} 条数据")
-
                 else:
                     logger.error("登录失败")
 
             finally:
                 # 确保浏览器正确关闭
                 await login_instance.close()
+                return results
 
         except Exception as e:
             logger.error(f"运行爬虫时出错: {e}", exc_info=True)
@@ -158,8 +157,10 @@ class CrawlerListener:
     async def start(self):
         """启动消息监听"""
         try:
-            queue = await self.connect()
+            # 连接到消息队列
+            await self.publisher.connect()
 
+            queue = await self.connect()
             logger.info(f"开始监听队列: {self.mq_config['queue_name']}")
 
             async with queue.iterator() as queue_iter:
@@ -172,6 +173,7 @@ class CrawlerListener:
         finally:
             if self.connection:
                 await self.connection.close()
+            await self.publisher.close()
 
 
 async def main():

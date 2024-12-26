@@ -1,0 +1,4 @@
+aio-pika==9.3.1
+elasticsearch[async]==8.11.1
+redis==5.0.1
+aioredis==2.0.1 
