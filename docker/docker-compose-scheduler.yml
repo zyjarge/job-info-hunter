@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  scheduler-service:
+    build:
+      context: ../projects/scheduler
+      dockerfile: Dockerfile
+    container_name: job_hunter_scheduler
+    environment:
+      - MYSQL_HOST=host.docker.internal
+      - MYSQL_PORT=3306
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=ro123ot
+      - MYSQL_DB=apscheduler
+      - RABBITMQ_HOST=job_hunter_mq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+    ports:
+      - "8000:8000"
+    networks:
+      - job_hunter_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  job_hunter_net:
+    external: true
+    name: job_hunter_net 
