@@ -155,29 +155,49 @@ class JobScheduler:
 
     def create_job(self, job: JobCreate) -> SchedulerJob:
         """创建新的定时任务"""
-        # 创建任务记录
-        db_job = SchedulerJob(
-            name=job.name,
-            description=job.description,
-            cron_expression=job.cron_expression,
-            job_params=job.job_params,
-            is_active=True,
-        )
-        self.db.add(db_job)
-        self.db.commit()
-        self.db.refresh(db_job)
+        try:
+            # 验证 cron 表达式
+            trigger = CronTrigger.from_crontab(job.cron_expression)
+            self.logger.info(f"Cron 表达式 '{job.cron_expression}' 解析结果: {trigger}")
 
-        # 添加到调度器
-        self.scheduler.add_job(
-            self._execute_job,
-            CronTrigger.from_crontab(job.cron_expression),
-            args=[db_job.id, job.job_params],
-            id=str(db_job.id),
-            name=job.name,
-            replace_existing=True,  # 如果任务已存在则替换
-            misfire_grace_time=60,  # 错过执行时间的容错范围
-        )
-        return db_job
+            # 创建任务记录
+            db_job = SchedulerJob(
+                name=job.name,
+                description=job.description,
+                cron_expression=job.cron_expression,
+                job_params=job.job_params,
+                is_active=True,
+            )
+            self.db.add(db_job)
+            self.db.commit()
+            self.db.refresh(db_job)
+
+            # 添加到调度器
+            scheduler_job = self.scheduler.add_job(
+                self._execute_job,
+                trigger=trigger,  # 直接使用已创建的触发器
+                args=[db_job.id, job.job_params],
+                id=str(db_job.id),
+                name=job.name,
+                replace_existing=True,
+                misfire_grace_time=60,
+            )
+
+            # 验证任务是否正确添加和启动
+            if scheduler_job and scheduler_job.next_run_time:
+                self.logger.info(
+                    f"任务 {db_job.id} 创建成功，下次执行时间: {scheduler_job.next_run_time}"
+                )
+            else:
+                self.logger.error(f"任务 {db_job.id} 创建后未正确调度")
+
+            return db_job
+
+        except Exception as e:
+            self.logger.error(f"创建任务失败: {str(e)}")
+            # 如果已经创建了数据库记录，需要回滚
+            self.db.rollback()
+            raise HTTPException(status_code=400, detail=f"创建任务失败: {str(e)}")
 
     def get_jobs(self) -> list[SchedulerJob]:
         """获取所有任务"""
@@ -381,23 +401,19 @@ class JobScheduler:
         """
         trigger_type = trigger.__class__.__name__
         if trigger_type == "CronTrigger":
-            # 使用 get_jobs() 返回的字段值
-            fields = {
-                "second": trigger.fields[0],
-                "minute": trigger.fields[1],
-                "hour": trigger.fields[2],
-                "day": trigger.fields[3],
-                "month": trigger.fields[4],
-                "day_of_week": trigger.fields[5],
-            }
-            # 重建 cron 表达式
-            trigger_expr = f"{fields['minute']} {fields['hour']} {fields['day']} {fields['month']} {fields['day_of_week']}"
+            # 从数据库中获取原始的 cron 表达式
+            db_job = (
+                self.db.query(SchedulerJob)
+                .filter(SchedulerJob.id == int(job.id))
+                .first()
+            )
+            trigger_expr = db_job.cron_expression if db_job else str(trigger)
         else:
             trigger_expr = str(trigger)
 
         return {
             "type": trigger_type,
             "expression": trigger_expr,
-            "next_run_time": job.next_run_time,  # 从 job 对象获取下次运行时间
-            "timezone": str(trigger.timezone),  # 添加时区信息
+            "next_run_time": job.next_run_time,
+            "timezone": str(trigger.timezone),
         }
