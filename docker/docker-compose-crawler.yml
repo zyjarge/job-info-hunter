@@ -5,39 +5,28 @@ services:
     build: 
       context: ../projects/job-crawler-python
       dockerfile: Dockerfile
-    container_name: job-crawler
+      cache_from:
+        - job_crawler:latest
+    image: job_crawler:latest
+    container_name: job_crawler
+    environment:
+      - TZ=Asia/Shanghai
     volumes:
       - ../projects/job-crawler-python/logs:/app/logs
       - ../projects/job-crawler-python/data:/app/data
       - ../projects/job-crawler-python/conf:/app/conf
-    environment:
-      - TZ=Asia/Shanghai
-    depends_on:
-      - rabbitmq
     networks:
-      - crawler-network
+      - job_hunter_net
     restart: unless-stopped
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: job-crawler-rabbitmq
-    ports:
-      - "5672:5672"   # AMQP 协议端口
-      - "15672:15672" # 管理界面端口
-    environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    networks:
-      - crawler-network
-    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
 
 networks:
-  crawler-network:
-    name: crawler-network
-    driver: bridge
-
-volumes:
-  rabbitmq_data:
-    name: crawler-rabbitmq-data 
+  job_hunter_net:
+    external: true

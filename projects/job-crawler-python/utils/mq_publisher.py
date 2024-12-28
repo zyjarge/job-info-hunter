@@ -3,6 +3,7 @@ import aio_pika
 import logging
 from datetime import datetime
 from typing import Dict, Any
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +22,14 @@ class MQPublisher:
     async def connect(self):
         """连接到RabbitMQ"""
         try:
+
             # 构建RabbitMQ连接URL
             mq_url = (
                 f"amqp://{self.mq_config['username']}:{self.mq_config['password']}@"
                 f"{self.mq_config['host']}:{self.mq_config['port']}/"
+            )
+            logger.info(
+                f"正在连接 RabbitMQ，地址: {self.mq_config['host']}:{self.mq_config['port']}"
             )
 
             self.connection = await aio_pika.connect_robust(mq_url)

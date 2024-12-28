@@ -34,15 +34,16 @@ class CrawlerListener:
     async def connect(self):
         """连接到RabbitMQ"""
         try:
+
             # 构建RabbitMQ连接URL
             mq_url = (
                 f"amqp://{self.mq_config['username']}:{self.mq_config['password']}@"
                 f"{self.mq_config['host']}:{self.mq_config['port']}/"
             )
-
             logger.info(
-                f"正在连接到RabbitMQ: {self.mq_config['host']}:{self.mq_config['port']}"
+                f"正在连接 RabbitMQ，地址: {self.mq_config['host']}:{self.mq_config['port']}"
             )
+
             self.connection = await aio_pika.connect_robust(mq_url)
             self.channel = await self.connection.channel()
 
@@ -157,8 +158,10 @@ class CrawlerListener:
     async def start(self):
         """启动消息监听"""
         try:
+            logger.info("爬虫监听器启动中...")
             # 连接到消息队列
-            await self.publisher.connect()
+            # await self.publisher.connect()
+            logger.info("连接到消息队列成功")
 
             queue = await self.connect()
             logger.info(f"开始监听队列: {self.mq_config['queue_name']}")

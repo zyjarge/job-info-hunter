@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   job_data_service:
@@ -11,7 +10,7 @@ services:
       - ELASTICSEARCH_PORT=9200
       - ELASTICSEARCH_USER=elastic
       - ELASTICSEARCH_PASSWORD=changeme
-      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_HOST=job_hunter_mq
       - RABBITMQ_PORT=5672
       - RABBITMQ_USER=guest
       - RABBITMQ_PASSWORD=guest

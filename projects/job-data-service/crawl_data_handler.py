@@ -25,9 +25,6 @@ class CrawlDataHandler:
         self.redis_dao = RedisDAO()
         self.monitor_service = MonitorService()
 
-        # 获取当前文件所在目录
-        self.base_dir = os.path.dirname(os.path.abspath(__file__))
-
     async def handle_crawl_result(self, message: Dict[str, Any]) -> bool:
         """
         处理爬虫结果的主要方法
@@ -87,15 +84,15 @@ class CrawlDataHandler:
         """
         logger.info("Starting crawl data handler service...")
         try:
-            # 从配置文件读取MQ配置
-            config_path = os.path.join(self.base_dir, "conf", "mq.json")
-            logger.info(f"Reading MQ config from: {config_path}")
-
-            with open(config_path, "r") as f:
-                mq_config = json.load(f)
+            # 从环境变量获取 MQ 配置
+            mq_host = os.getenv("RABBITMQ_HOST", "localhost")
+            mq_port = os.getenv("RABBITMQ_PORT", "5672")
+            mq_user = os.getenv("RABBITMQ_USER", "guest")
+            mq_pass = os.getenv("RABBITMQ_PASSWORD", "guest")
 
             # 构建RabbitMQ连接URL
-            mq_url = f"amqp://{mq_config['username']}:{mq_config['password']}@{mq_config['host']}:{mq_config['port']}/"
+            mq_url = f"amqp://{mq_user}:{mq_pass}@{mq_host}:{mq_port}/"
+            logger.info(f"Connecting to RabbitMQ at {mq_host}:{mq_port}")
 
             # 连接到RabbitMQ
             connection = await aio_pika.connect_robust(mq_url)
@@ -106,7 +103,7 @@ class CrawlDataHandler:
 
                 # 声明队列
                 queue = await channel.declare_queue(
-                    mq_config["queue"]["name"], durable=mq_config["queue"]["durable"]
+                    "crawler-results", durable=True  # 使用固定的队列名
                 )
 
                 logger.info("开始监听爬虫结果队列...")
