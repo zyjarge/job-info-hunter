@@ -3,6 +3,7 @@
 
 import json
 import logging
+import os
 from typing import Dict, Any, List, Union
 from elasticsearch import AsyncElasticsearch
 from elasticsearch.helpers import async_bulk
@@ -20,10 +21,15 @@ class ElasticsearchDAO:
     """
 
     def __init__(self):
-        # TODO: 从配置文件读取 ES 配置
+        # 从环境变量获取配置
+        es_host = os.getenv("ELASTICSEARCH_HOST", "localhost")
+        es_port = os.getenv("ELASTICSEARCH_PORT", "9200")
+        es_user = os.getenv("ELASTICSEARCH_USER", "elastic")
+        es_password = os.getenv("ELASTICSEARCH_PASSWORD", "changeme")
+
         self.es_client = AsyncElasticsearch(
-            hosts=["http://localhost:9200"],
-            basic_auth=("elastic", "changeme"),
+            hosts=[f"http://{es_host}:{es_port}"],
+            basic_auth=(es_user, es_password),
             verify_certs=False,
             request_timeout=30,  # 请求超时时间
             max_retries=3,  # 最大重试次数

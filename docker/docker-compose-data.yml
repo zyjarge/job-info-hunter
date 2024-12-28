@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  job_data_service:
+    build:
+      context: ../projects/job-data-service
+      dockerfile: Dockerfile
+    container_name: job_data_service
+    environment:
+      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_PORT=9200
+      - ELASTICSEARCH_USER=elastic
+      - ELASTICSEARCH_PASSWORD=changeme
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - job_hunter_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import socket; socket.socket().connect(('localhost', 8000))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  job_hunter_net:
+    external: true 
