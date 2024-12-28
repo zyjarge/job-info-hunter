@@ -7,7 +7,7 @@ class SchedulerJob(Base):
     __tablename__ = "scheduler_jobs"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), unique=True, index=True)
+    name = Column(String(255), index=True)
     description = Column(String(1000), nullable=True)
     cron_expression = Column(String(100))
     job_params = Column(JSON)

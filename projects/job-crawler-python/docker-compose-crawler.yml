@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  crawler:
+    build: .
+    container_name: job-crawler
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./conf:/app/conf
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      - rabbitmq
+    networks:
+      - crawler-network
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: job-crawler-rabbitmq
+    ports:
+      - "5672:5672"   # AMQP 协议端口
+      - "15672:15672" # 管理界面端口
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - crawler-network
+    restart: unless-stopped
+
+networks:
+  crawler-network:
+    name: crawler-network
+    driver: bridge
+
+volumes:
+  rabbitmq_data:
+    name: crawler-rabbitmq-data 

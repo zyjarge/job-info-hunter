@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 from datetime import datetime
 
 
@@ -46,3 +46,26 @@ class JobResponse(JobBase):
 
 class JobDetailResponse(JobResponse):
     execution_history: List[JobExecutionHistoryResponse]
+
+
+# APScheduler相关的模型
+class APSchedulerJobTrigger(BaseModel):
+    """APScheduler触发器信息"""
+
+    type: str
+    expression: str
+    next_run_time: Optional[datetime]
+
+
+class APSchedulerJobState(BaseModel):
+    """APScheduler任务状态"""
+
+    id: str
+    name: str
+    func: str
+    args: List[Any]
+    kwargs: Dict[str, Any]
+    trigger: APSchedulerJobTrigger
+    next_run_time: Optional[datetime]
+    pending: bool
+    paused: bool
