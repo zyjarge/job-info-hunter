@@ -1,0 +1,42 @@
+# 依赖目录
+node_modules
+.pnp
+.pnp.js
+
+# 测试
+coverage
+*.test.*
+
+# 构建输出
+.next
+out
+build
+dist
+
+# 缓存
+.npm
+.eslintcache
+.tsbuildinfo
+
+# 环境文件
+.env*
+!.env.example
+
+# 系统文件
+.DS_Store
+*.pem
+
+# 调试文件
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# 版本控制
+.git
+.gitignore 

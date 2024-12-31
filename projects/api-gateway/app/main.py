@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1 import auth, crawler
+from app.api.v1 import auth, crawler, health
 
 app = FastAPI(
     title="Job Hunter API Gateway",
@@ -34,6 +34,7 @@ async def timeout_middleware(request, call_next):
 # 注册路由
 app.include_router(auth.router, prefix="/api/v1", tags=["认证"])
 app.include_router(crawler.router, prefix="/api/v1", tags=["爬虫管理"])
+app.include_router(health.router)
 
 
 @app.get("/health")
