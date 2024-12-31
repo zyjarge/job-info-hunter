@@ -18,6 +18,8 @@ services:
       - REDIS_PORT=6379
     networks:
       - job_hunter_net
+    tty: true
+    stdin_open: true
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python3", "-c", "import socket; socket.socket().connect(('localhost', 8000))"]

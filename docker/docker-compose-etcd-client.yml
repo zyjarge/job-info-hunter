@@ -1,0 +1,16 @@
+services:
+  etcd-client:
+    image: bitnami/etcd:3.5.10
+    container_name: job_hunter_etcd_client
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCDCTL_API=3
+      - ETCDCTL_ENDPOINTS=http://job_hunter_etcd:2379
+    networks:
+      - job_hunter_net
+    entrypoint: ["sh", "-c", "while true; do sleep 3600; done"]
+
+networks:
+  job_hunter_net:
+    name: job_hunter_net
+    external: true 

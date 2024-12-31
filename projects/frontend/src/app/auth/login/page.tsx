@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,16 +19,18 @@ import { useToast } from "@/components/ui/use-toast";
 import { login } from "@/lib/api/auth";
 
 const formSchema = z.object({
-    username: z.string().min(1, "请输入用户名"),
-    password: z.string().min(1, "请输入密码"),
+    username: z.string().min(2, "用户名至少需要2个字符"),
+    password: z.string().min(6, "密码至少需要6个字符"),
 });
+
+type FormValues = z.infer<typeof formSchema>;
 
 export default function LoginPage() {
     const router = useRouter();
     const { toast } = useToast();
-    const [isLoading, setIsLoading] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-    const form = useForm<z.infer<typeof formSchema>>({
+    const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             username: "",
@@ -37,15 +38,29 @@ export default function LoginPage() {
         },
     });
 
-    async function onSubmit(values: z.infer<typeof formSchema>) {
+    async function onSubmit(values: FormValues) {
         try {
-            setIsLoading(true);
-            await login(values.username, values.password);
+            setLoading(true);
+            const { access_token } = await login({
+                username: values.username,
+                password: values.password
+            });
+            localStorage.setItem("token", access_token);
+            localStorage.setItem("username", values.username);
+
+            // 获取重定向路径
+            const redirectPath = localStorage.getItem("redirectPath") || "/";
+            localStorage.removeItem("redirectPath"); // 清除重定向路径
+
             toast({
                 title: "登录成功",
-                description: "正在跳转到首页...",
+                description: "正在跳转...",
             });
-            router.push("/crawler");
+
+            // 延迟跳转以显示成功提示
+            setTimeout(() => {
+                router.push(redirectPath);
+            }, 1000);
         } catch (error) {
             toast({
                 variant: "destructive",
@@ -53,20 +68,19 @@ export default function LoginPage() {
                 description: error instanceof Error ? error.message : "请稍后重试",
             });
         } finally {
-            setIsLoading(false);
+            setLoading(false);
         }
     }
 
     return (
-        <div className="container flex h-screen w-screen flex-col items-center justify-center">
-            <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-                <div className="flex flex-col space-y-2 text-center">
-                    <h1 className="text-2xl font-semibold tracking-tight">欢迎回来</h1>
+        <div className="flex items-center justify-center min-h-screen bg-background">
+            <div className="w-full max-w-[400px] p-6 space-y-6 bg-card rounded-lg shadow-lg">
+                <div className="space-y-2 text-center">
+                    <h1 className="text-2xl font-bold">登录</h1>
                     <p className="text-sm text-muted-foreground">
-                        请输入您的用户名和密码登录
+                        输入您的账号密码登录系统
                     </p>
                 </div>
-
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <FormField
@@ -79,7 +93,7 @@ export default function LoginPage() {
                                         <Input
                                             placeholder="请输入用户名"
                                             {...field}
-                                            disabled={isLoading}
+                                            disabled={loading}
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -97,23 +111,18 @@ export default function LoginPage() {
                                             type="password"
                                             placeholder="请输入密码"
                                             {...field}
-                                            disabled={isLoading}
+                                            disabled={loading}
                                         />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
-                        <Button type="submit" className="w-full" disabled={isLoading}>
-                            {isLoading ? "登录中..." : "登录"}
+                        <Button type="submit" className="w-full" disabled={loading}>
+                            {loading ? "登录中..." : "登录"}
                         </Button>
                     </form>
                 </Form>
-
-                <div className="text-center text-sm text-muted-foreground">
-                    测试账号: admin<br />
-                    测试密码: secret
-                </div>
             </div>
         </div>
     );

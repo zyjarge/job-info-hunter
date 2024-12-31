@@ -22,4 +22,4 @@ COPY . .
 ENV PYTHONPATH=/app
 
 # 使用uvicorn直接启动应用
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"] 

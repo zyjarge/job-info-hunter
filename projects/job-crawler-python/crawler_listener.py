@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from utils.mq_publisher import MQPublisher
 from datetime import datetime
+from utils.config_manager import ConfigManager
 
 # 添加项目根目录到Python路径
 sys.path.append(str(Path(__file__).parent))
@@ -19,17 +20,33 @@ logger = setup_logger("crawler_listener")
 
 class CrawlerListener:
     def __init__(self):
-        # 加载配置
-        with open("conf/config.json", "r") as f:
-            config = json.load(f)
-            self.site_mapping = config["site_mapping"]
-            self.mq_config = config["mq"]
-
-        # 初始化MQ发布者
-        self.publisher = MQPublisher(self.mq_config)
-
+        self.config_manager = ConfigManager()
+        self.publisher = None
         self.connection = None
         self.channel = None
+
+    async def init_configs(self):
+        """初始化配置"""
+        try:
+            # 启动配置管理器，并设置配置更新回调
+            await self.config_manager.start(self._on_config_update)
+            # 获取初始配置
+            self.site_mapping = self.config_manager.site_mapping
+            self.mq_config = await self.config_manager.get_mq_config()
+
+            # 初始化 MQ 发布者
+            self.publisher = MQPublisher(self.mq_config)
+
+            logger.info("配置初始化成功")
+        except Exception as e:
+            logger.error(f"配置初始化失败: {e}")
+            raise
+
+    async def _on_config_update(self, new_site_mapping: Dict[str, Any]):
+        """配置更新回调"""
+        logger.info("检测到站点配置变更")
+        self.site_mapping = new_site_mapping
+        logger.info(f"已更新站点配置，当前有 {len(self.site_mapping)} 个有效站点")
 
     async def connect(self):
         """连接到RabbitMQ"""
@@ -159,10 +176,11 @@ class CrawlerListener:
         """启动消息监听"""
         try:
             logger.info("爬虫监听器启动中...")
-            # 连接到消息队列
-            # await self.publisher.connect()
-            logger.info("连接到消息队列成功")
 
+            # 初始化配置
+            await self.init_configs()
+
+            # 连接到消息队列
             queue = await self.connect()
             logger.info(f"开始监听队列: {self.mq_config['queue_name']}")
 
@@ -172,11 +190,19 @@ class CrawlerListener:
 
         except Exception as e:
             logger.error(f"消息监听出错: {e}", exc_info=True)
-
         finally:
             if self.connection:
                 await self.connection.close()
+            if self.publisher:
+                await self.publisher.close()
+
+    async def close(self):
+        """关闭资源"""
+        if self.connection:
+            await self.connection.close()
+        if self.publisher:
             await self.publisher.close()
+        await self.config_manager.stop()
 
 
 async def main():

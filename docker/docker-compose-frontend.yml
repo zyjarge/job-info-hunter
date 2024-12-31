@@ -5,6 +5,13 @@ services:
     build:
       context: ../projects/frontend
       dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
+      cache_from:
+        - frontend:latest
+      labels:
+        - "build.logs=true"
+    image: frontend:latest
     ports:
       - "3000:3000"
     environment:
@@ -12,7 +19,28 @@ services:
       - NEXT_PUBLIC_API_URL=http://api-gateway:8080
     networks:
       - job-hunter-network
+    volumes:
+      - ../projects/frontend:/app
+      - /app/node_modules
+      - /app/.next
+    develop:
+      watch:
+        - action: sync
+          path: ../projects/frontend
+          target: /app
+          ignore:
+            - node_modules/
+            - .next/
+        - action: rebuild
+          path: ../projects/frontend/package.json
+    tty: true
+    stdin_open: true
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 networks:
   job-hunter-network:

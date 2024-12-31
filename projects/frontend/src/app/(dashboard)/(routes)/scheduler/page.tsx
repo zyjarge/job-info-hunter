@@ -59,6 +59,16 @@ import {
 } from "@/lib/api/scheduler";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loading } from "@/components/ui/loading";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const frequencyOptions = [
     { value: "hourly", label: "每小时" },
@@ -82,6 +92,8 @@ export default function SchedulerPage() {
     const [loading, setLoading] = useState(true);
     const [showDialog, setShowDialog] = useState(false);
     const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [deletingSchedule, setDeletingSchedule] = useState<Schedule | null>(null);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -170,13 +182,16 @@ export default function SchedulerPage() {
         }
     }
 
-    async function handleDelete(id: string) {
-        if (!confirm("确定要删除这个调度任务吗？")) {
-            return;
-        }
+    async function handleDelete(schedule: Schedule) {
+        setDeletingSchedule(schedule);
+        setShowDeleteDialog(true);
+    }
+
+    async function confirmDelete() {
+        if (!deletingSchedule) return;
 
         try {
-            await deleteSchedule(id);
+            await deleteSchedule(deletingSchedule.id);
             toast({
                 title: "删除成功",
                 description: "调度任务已删除",
@@ -188,6 +203,9 @@ export default function SchedulerPage() {
                 title: "删除失败",
                 description: error instanceof Error ? error.message : "请稍后重试",
             });
+        } finally {
+            setShowDeleteDialog(false);
+            setDeletingSchedule(null);
         }
     }
 
@@ -257,12 +275,12 @@ export default function SchedulerPage() {
                                 <Pencil className="h-4 w-4" />
                             </Button>
                             <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDelete(schedule.id)}
-                                title="删除"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDelete(schedule)}
                             >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                删除
                             </Button>
                         </div>
 
@@ -501,6 +519,21 @@ export default function SchedulerPage() {
                     </Form>
                 </DialogContent>
             </Dialog>
+
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>确认删除</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            确定要删除调度任务 "{deletingSchedule?.name}" 吗？此操作无法撤销。
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete}>确认删除</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 } 
