@@ -6,7 +6,7 @@ import logging
 import os
 from typing import Dict, Any
 
-from dao.es_dao import ElasticsearchDAO
+from dao.meilisearch_dao import MeilisearchDAO
 from dao.redis_dao import RedisDAO
 from monitor.monitor_service import MonitorService
 import aio_pika
@@ -21,7 +21,7 @@ class CrawlDataHandler:
     """
 
     def __init__(self):
-        self.es_dao = ElasticsearchDAO()
+        self.search_dao = MeilisearchDAO()
         self.redis_dao = RedisDAO()
         self.monitor_service = MonitorService()
 
@@ -40,35 +40,31 @@ class CrawlDataHandler:
                 f"Received crawl result message: {json.dumps(message, ensure_ascii=False)}"
             )
 
-            # 1. 存储到 Elasticsearch
-            # 判断消息是否为列表或单个职位数据
-            job_data = (
-                message
-                if isinstance(message, list)
-                or not any(isinstance(v, list) for v in message.values())
-                else message.get("data", [])
-            )
+            # 1. 存储到 Meilisearch
+            # 从消息中提取职位数据
+            job_data = message.get("data", [])
+            if not job_data:
+                logger.error("消息中没有找到职位数据")
+                return False
 
-            es_result = await self.es_dao.save_job_data(job_data)
-            if not es_result:
-                logger.error("保存数据到 Elasticsearch 失败")
+            # 初始化索引
+            await self.search_dao.init_index()
+
+            # 保存数据
+            search_result = await self.search_dao.save_job_data(job_data)
+            if not search_result:
+                logger.error("保存数据到 Meilisearch 失败")
                 return False
 
             # 2. 存储到 Redis (暂时只打日志)
             await self.redis_dao.cache_job_data(message)
 
-            # 3. 发送监控指标 (暂时只打日志)
-            job_count = len(job_data) if isinstance(job_data, list) else 1
+            # 3. 发送监控指标
+            job_count = len(job_data)
             await self.monitor_service.send_metrics(
                 metric_name="crawl_data_processed",
                 value=job_count,
-                tags={
-                    "source": (
-                        job_data[0].get("site_id", "unknown")
-                        if isinstance(job_data, list)
-                        else job_data.get("site_id", "unknown")
-                    )
-                },
+                tags={"source": message.get("site_id", "unknown")},
             )
 
             logger.info(f"成功处理 {job_count} 条职位数据")

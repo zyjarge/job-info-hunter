@@ -111,14 +111,30 @@ services:
       retries: 3
     restart: unless-stopped
 
-  scheduler:
-    # ... 其他配置 ...
+  meilisearch:
+    image: getmeili/meilisearch:v1.5
+    container_name: job_hunter_meilisearch
+    environment:
+      - MEILI_MASTER_KEY=job_hunter_key
+      - MEILI_NO_ANALYTICS=true
+      - MEILI_ENV=development
+      - MEILI_LOG_LEVEL=INFO
+      - MEILI_MAX_INDEX_SIZE=100MB
+      - MEILI_MAX_TASK_DB_SIZE=100MB
+    mem_limit: 256m
+    cpus: 0.3
     ports:
-      # 方案1：修改主机端口映射
-      - "8001:8000"  # 改用 8001 端口
-      # 或者
-      # 方案2：使用动态端口分配
-      - "8000"  # 让 Docker 自动分配一个可用端口
+      - "7700:7700"
+    volumes:
+      - meilisearch_data:/meili_data
+    networks:
+      - job_hunter_net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--spider", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
 volumes:
   es_data:
@@ -128,6 +144,8 @@ volumes:
   etcd_data:
     driver: local
   postgres_data:
+    driver: local
+  meilisearch_data:
     driver: local
 
 networks:

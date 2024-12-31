@@ -25,7 +25,7 @@ async def main():
         raise
     finally:
         # 确保资源被正确关闭
-        await handler.es_dao.close()
+        await handler.search_dao.close()
 
 
 if __name__ == "__main__":
