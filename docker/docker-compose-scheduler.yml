@@ -5,11 +5,11 @@ services:
       dockerfile: Dockerfile
     container_name: job_hunter_scheduler
     environment:
-      - MYSQL_HOST=host.docker.internal
-      - MYSQL_PORT=3306
-      - MYSQL_USER=root
-      - MYSQL_PASSWORD=ro123ot
-      - MYSQL_DB=apscheduler
+      - PG_HOST=host.docker.internal
+      - PG_PORT=5432
+      - PG_USER=postgres
+      - PG_PASSWORD=postgres
+      - PG_DB=job_hunter
       - RABBITMQ_HOST=job_hunter_mq
       - RABBITMQ_PORT=5672
       - RABBITMQ_USER=guest

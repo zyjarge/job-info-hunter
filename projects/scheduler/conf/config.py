@@ -3,12 +3,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# MySQL配置
-MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
-MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
-MYSQL_USER = os.getenv("MYSQL_USER", "root")
-MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "ro123ot")
-MYSQL_DB = os.getenv("MYSQL_DB", "apscheduler")
+# PostgreSQL配置
+PG_HOST = os.getenv("PG_HOST", "localhost")
+PG_PORT = int(os.getenv("PG_PORT", "5432"))
+PG_USER = os.getenv("PG_USER", "postgres")
+PG_PASSWORD = os.getenv("PG_PASSWORD", "postgres")
+PG_DB = os.getenv("PG_DB", "job_hunter")
 
 # RabbitMQ配置
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")

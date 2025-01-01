@@ -9,8 +9,8 @@ WORKDIR /app
 # 安装系统依赖
 RUN apt-get update && apt-get install -y \
     pkg-config \
-    default-libmysqlclient-dev \
     build-essential \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
