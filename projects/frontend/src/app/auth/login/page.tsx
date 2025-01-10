@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,20 +18,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { login } from "@/lib/api/auth";
+import { AxiosError } from "axios";
 
 const formSchema = z.object({
-    username: z.string().min(2, "用户名至少需要2个字符"),
-    password: z.string().min(6, "密码至少需要6个字符"),
+    username: z.string().min(1, "请输入用户名"),
+    password: z.string().min(1, "请输入密码"),
 });
-
-type FormValues = z.infer<typeof formSchema>;
 
 export default function LoginPage() {
     const router = useRouter();
     const { toast } = useToast();
-    const [loading, setLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
-    const form = useForm<FormValues>({
+    const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             username: "",
@@ -38,18 +38,22 @@ export default function LoginPage() {
         },
     });
 
-    async function onSubmit(values: FormValues) {
+    async function onSubmit(values: z.infer<typeof formSchema>, event: React.FormEvent) {
+        // 阻止表单默认提交行为
+        event.preventDefault();
+
         try {
-            setLoading(true);
+            setIsLoading(true);
             const { access_token } = await login({
                 username: values.username,
                 password: values.password
             });
-            localStorage.setItem("token", access_token);
+
+            // 保存用户名
             localStorage.setItem("username", values.username);
 
             // 获取重定向路径
-            const redirectPath = localStorage.getItem("redirectPath") || "/";
+            const redirectPath = localStorage.getItem("redirectPath") || "/crawler";
             localStorage.removeItem("redirectPath"); // 清除重定向路径
 
             toast({
@@ -62,27 +66,43 @@ export default function LoginPage() {
                 router.push(redirectPath);
             }, 1000);
         } catch (error) {
+            console.error("Login error:", error);
+            let errorMessage = "请稍后重试";
+
+            if (error instanceof AxiosError) {
+                if (error.response?.status === 401) {
+                    errorMessage = "用户名或密码错误";
+                } else if (error.response?.data?.detail) {
+                    errorMessage = error.response.data.detail;
+                } else if (error.message === "Network Error") {
+                    errorMessage = "网络连接失败，请检查网络设置";
+                }
+            } else if (error instanceof Error) {
+                errorMessage = error.message;
+            }
+
             toast({
                 variant: "destructive",
                 title: "登录失败",
-                description: error instanceof Error ? error.message : "请稍后重试",
+                description: errorMessage,
             });
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     }
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-background">
-            <div className="w-full max-w-[400px] p-6 space-y-6 bg-card rounded-lg shadow-lg">
-                <div className="space-y-2 text-center">
-                    <h1 className="text-2xl font-bold">登录</h1>
+        <div className="container flex h-screen w-screen flex-col items-center justify-center">
+            <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
+                <div className="flex flex-col space-y-2 text-center">
+                    <h1 className="text-2xl font-semibold tracking-tight">欢迎回来</h1>
                     <p className="text-sm text-muted-foreground">
-                        输入您的账号密码登录系统
+                        请输入您的用户名和密码登录
                     </p>
                 </div>
+
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <form method="POST" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <FormField
                             control={form.control}
                             name="username"
@@ -93,7 +113,7 @@ export default function LoginPage() {
                                         <Input
                                             placeholder="请输入用户名"
                                             {...field}
-                                            disabled={loading}
+                                            disabled={isLoading}
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -111,19 +131,32 @@ export default function LoginPage() {
                                             type="password"
                                             placeholder="请输入密码"
                                             {...field}
-                                            disabled={loading}
+                                            disabled={isLoading}
                                         />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
-                        <Button type="submit" className="w-full" disabled={loading}>
-                            {loading ? "登录中..." : "登录"}
+                        <Button type="submit" className="w-full" disabled={isLoading}>
+                            {isLoading ? "登录中..." : "登录"}
                         </Button>
                     </form>
                 </Form>
+
+                <div className="flex flex-col space-y-4 text-center text-sm">
+                    <div className="text-muted-foreground">
+                        测试账号: admin<br />
+                        测试密码: secret
+                    </div>
+                    <div>
+                        还没有账号？{" "}
+                        <Link href="/auth/register" className="text-primary hover:underline">
+                            立即注册
+                        </Link>
+                    </div>
+                </div>
             </div>
         </div>
     );
-} 
+}

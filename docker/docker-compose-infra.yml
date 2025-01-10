@@ -1,48 +1,4 @@
 services:
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
-    container_name: job_hunter_es
-    environment:
-      - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms256m -Xmx256m
-      - xpack.security.enabled=true
-      - ELASTIC_PASSWORD=changeme
-      - xpack.security.http.ssl.enabled=false
-      - cluster.name=job-hunter-cluster
-      - node.name=job-hunter-node
-      - bootstrap.memory_lock=true
-      - cluster.routing.allocation.disk.threshold_enabled=true
-      - cluster.routing.allocation.disk.watermark.low=512mb
-      - cluster.routing.allocation.disk.watermark.high=256mb
-      - cluster.routing.allocation.disk.watermark.flood_stage=128mb
-      - xpack.ml.enabled=false
-      - xpack.watcher.enabled=false
-      - xpack.security.audit.enabled=false
-      - xpack.monitoring.templates.enabled=false
-      - xpack.monitoring.collection.enabled=false
-    user: elasticsearch
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-      nofile:
-        soft: 65536
-        hard: 65536
-    mem_limit: 512m
-    cpus: 0.5
-    ports:
-      - "9200:9200"
-    volumes:
-      - es_data:/usr/share/elasticsearch/data
-    networks:
-      - job_hunter_net
-    healthcheck:
-      test: ["CMD-SHELL", "curl -s -u elastic:changeme http://localhost:9200 >/dev/null || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-
   rabbitmq:
     image: rabbitmq:3-management
     container_name: job_hunter_mq
@@ -121,8 +77,8 @@ services:
       - MEILI_LOG_LEVEL=INFO
       - MEILI_MAX_INDEX_SIZE=100MB
       - MEILI_MAX_TASK_DB_SIZE=100MB
-    mem_limit: 256m
-    cpus: 0.3
+    mem_limit: 512m
+    cpus: 0.5
     ports:
       - "7700:7700"
     volumes:
@@ -130,15 +86,14 @@ services:
     networks:
       - job_hunter_net
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--spider", "http://localhost:7700/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      test: ["CMD-SHELL", "wget --no-verbose --spider http://127.0.0.1:7700/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     restart: unless-stopped
 
 volumes:
-  es_data:
-    driver: local
   rabbitmq_data:
     driver: local
   etcd_data:
@@ -151,3 +106,4 @@ volumes:
 networks:
   job_hunter_net:
     name: job_hunter_net
+    driver: bridge

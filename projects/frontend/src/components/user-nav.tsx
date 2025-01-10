@@ -9,6 +9,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
+import Cookies from "js-cookie";
 
 export function UserNav() {
     const router = useRouter();
@@ -17,6 +18,7 @@ export function UserNav() {
     const handleLogout = () => {
         localStorage.removeItem("token");
         localStorage.removeItem("username");
+        Cookies.remove("token");
         router.push("/auth/login");
     };
 

@@ -101,57 +101,48 @@ class JobScheduler:
         )
         return pika.BlockingConnection(parameters)
 
-    def _execute_job(self, job_id: int, job_params: dict):
-        # 记录任务开始执行
-        history = JobExecutionHistory(
-            job_id=job_id, start_time=datetime.now(), status="RUNNING"
-        )
-        self.db.add(history)
-        self.db.commit()
-
+    def _execute_job(self, job_id: int):
+        """执行任务并记录执行历史"""
         try:
-            # 连接RabbitMQ并发送消息
-            connection = self._get_rabbitmq_connection()
-            channel = connection.channel()
+            with self.db.begin_nested():  # 创建保存点
+                # 创建执行历史记录
+                history = JobExecutionHistory(
+                    job_id=job_id, start_time=datetime.now(), status="RUNNING"
+                )
+                self.db.add(history)
+                self.db.flush()  # 立即获取 ID
 
-            # 声明交换机和队列
-            channel.exchange_declare(
-                exchange="job_crawler",
-                exchange_type="topic",
-                durable=True,
-            )
-            channel.queue_declare(queue="crawler-jobs", durable=True)
-            channel.queue_bind(
-                exchange="job_crawler", queue="crawler-jobs", routing_key="crawler.job"
-            )
+                try:
+                    # 获取任务信息
+                    job = (
+                        self.db.query(SchedulerJob)
+                        .filter(SchedulerJob.id == job_id)
+                        .first()
+                    )
+                    if not job:
+                        raise ValueError(f"任务不存在: {job_id}")
 
-            # 发送消息
-            message = json.dumps(job_params)
-            channel.basic_publish(
-                exchange="job_crawler",
-                routing_key="crawler.job",
-                body=message,
-                properties=pika.BasicProperties(
-                    delivery_mode=2,  # 消息持久化
-                ),
-            )
+                    # 执行任务逻辑
+                    result = self._run_job(job)
 
-            connection.close()
+                    # 更新执行历史
+                    history.end_time = datetime.now()
+                    history.status = "SUCCESS"
+                    history.result = result
 
-            # 更新执行历史为成功
-            history.status = "SUCCESS"
-            history.end_time = datetime.now()
-            history.result = {"message": "任务已成功发送到队列"}
+                except Exception as e:
+                    # 更新执行历史为失败状态
+                    history.end_time = datetime.now()
+                    history.status = "FAILED"
+                    history.error_message = str(e)
+                    raise  # 重新抛出异常
+
+            self.db.commit()  # 提交事务
 
         except Exception as e:
-            # 更新执行历史为失败
-            history.status = "FAILED"
-            history.end_time = datetime.now()
-            history.error_message = str(e)
-            self.logger.error(f"任务 {job_id} 执行失败: {str(e)}")
-
-        finally:
-            self.db.commit()
+            self.db.rollback()  # 回滚事务
+            logger.error(f"任务执行失败: {str(e)}")
+            # 可以在这里添加额外的错误处理逻辑
 
     def create_job(self, job: JobCreate) -> SchedulerJob:
         """创建新的定时任务"""
@@ -417,3 +408,47 @@ class JobScheduler:
             "next_run_time": job.next_run_time,
             "timezone": str(trigger.timezone),
         }
+
+    def _run_job(self, job: SchedulerJob) -> dict:
+        """执行具体的任务逻辑"""
+        try:
+            # 连接RabbitMQ
+            connection = self._get_rabbitmq_connection()
+            channel = connection.channel()
+
+            # 声明交换机和队列
+            channel.exchange_declare(
+                exchange="job_crawler",
+                exchange_type="topic",
+                durable=True
+            )
+            channel.queue_declare(queue="crawler-jobs", durable=True)
+            channel.queue_bind(
+                exchange="job_crawler",
+                queue="crawler-jobs",
+                routing_key="crawler.job"
+            )
+
+            # 发送任务消息到RabbitMQ
+            message = json.dumps({
+                "job_id": job.id,
+                "params": job.job_params,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+            channel.basic_publish(
+                exchange="job_crawler",
+                routing_key="crawler.job",
+                body=message,
+                properties=pika.BasicProperties(
+                    delivery_mode=2,  # 消息持久化
+                    content_type='application/json'
+                )
+            )
+
+            connection.close()
+            return {"message": "任务已成功发送到队列", "job_id": job.id}
+
+        except Exception as e:
+            self.logger.error(f"任务执行失败: {str(e)}")
+            raise

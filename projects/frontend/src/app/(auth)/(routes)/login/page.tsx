@@ -40,12 +40,27 @@ export default function LoginPage() {
     async function onSubmit(values: z.infer<typeof formSchema>) {
         try {
             setIsLoading(true);
-            await login(values.username, values.password);
+            const { access_token } = await login({
+                username: values.username,
+                password: values.password
+            });
+
+            // 保存用户名
+            localStorage.setItem("username", values.username);
+
+            // 获取重定向路径
+            const redirectPath = localStorage.getItem("redirectPath") || "/crawler";
+            localStorage.removeItem("redirectPath"); // 清除重定向路径
+
             toast({
                 title: "登录成功",
-                description: "正在跳转到首页...",
+                description: "正在跳转...",
             });
-            router.push("/crawler");
+
+            // 延迟跳转以显示成功提示
+            setTimeout(() => {
+                router.push(redirectPath);
+            }, 1000);
         } catch (error) {
             toast({
                 variant: "destructive",
@@ -110,9 +125,17 @@ export default function LoginPage() {
                     </form>
                 </Form>
 
-                <div className="text-center text-sm text-muted-foreground">
-                    测试账号: admin<br />
-                    测试密码: secret
+                <div className="flex flex-col space-y-4 text-center text-sm">
+                    <div className="text-muted-foreground">
+                        测试账号: admin<br />
+                        测试密码: secret
+                    </div>
+                    <div>
+                        还没有账号？{" "}
+                        <Link href="/auth/register" className="text-primary hover:underline">
+                            立即注册
+                        </Link>
+                    </div>
                 </div>
             </div>
         </div>
