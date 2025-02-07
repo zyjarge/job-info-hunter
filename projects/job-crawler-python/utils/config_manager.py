@@ -144,9 +144,14 @@ class ConfigManager:
     async def get_mq_config(self) -> Dict[str, Any]:
         """获取 MQ 配置"""
         try:
-            value, _ = self.client.get("/crawlers/mq")
+            logger.debug("尝试从 /crawlers/mq/config 获取 MQ 配置")
+            value, _ = self.client.get("/crawlers/mq/config")
             if value:
-                return json.loads(value.decode("utf-8"))
+                logger.debug(f"获取到原始配置值: {value}")
+                config = json.loads(value.decode("utf-8"))
+                logger.debug(f"解析后的配置: {config}")
+                return config
+            logger.error("etcd 返回的值为空")
             raise ValueError("MQ 配置不存在")
         except Exception as e:
             logger.error(f"从 etcd 获取 MQ 配置失败: {e}")

@@ -44,7 +44,7 @@ def migrate_config_to_etcd(
             logger.info(f"已迁移站点配置: {site_id}")
 
         # 迁移 MQ 配置
-        client.put("/crawlers/mq", json.dumps(config["mq"]))
+        client.put("/crawlers/mq/config", json.dumps(config["mq"]))
         logger.info("已迁移 MQ 配置")
 
         logger.info("配置迁移完成")

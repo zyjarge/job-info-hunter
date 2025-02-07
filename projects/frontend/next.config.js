@@ -8,18 +8,20 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // 禁用热更新
-  webpackDevMiddleware: config => {
-    config.watchOptions = {
-      ignored: ['**/'],  // 忽略所有文件的监视
-      poll: false,       // 禁用轮询
-    }
-    return config
-  },
-  // 开发时的额外配置
+  // 实验性功能配置
   experimental: {
     // 允许更大的页面大小
     largePageDataBytes: 128 * 100000,
+  },
+  // Webpack 配置（生产环境使用）
+  webpack: (config, { dev, isServer }) => {
+    if (dev) {
+      config.watchOptions = {
+        ignored: ['**/.git/**', '**/node_modules/**'],
+        poll: false,
+      }
+    }
+    return config
   }
 }
 
