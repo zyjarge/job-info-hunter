@@ -1,0 +1,33 @@
+services:
+  job_data_service:
+    build:
+      context: ../projects/job-data-service
+      dockerfile: Dockerfile
+      args:
+        - BUILDKIT_PROGRESS=plain
+        - PIP_PROGRESS_BAR=on
+    container_name: job_data_service
+    environment:
+      # Meilisearch 配置
+      - MEILISEARCH_HOST=http://meilisearch:7700
+      - MEILISEARCH_MASTER_KEY=job_hunter_key
+      # RabbitMQ 配置
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+      # Redis 配置
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - job_hunter_net
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import socket; socket.socket().connect(('localhost', 8000))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+networks:
+  job_hunter_net:
+    external: true 

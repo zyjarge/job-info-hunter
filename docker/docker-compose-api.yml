@@ -1,0 +1,57 @@
+services:
+  api-gateway:
+    build:
+      context: ../projects/api-gateway
+      dockerfile: Dockerfile
+      args:
+        - BUILDKIT_PROGRESS=plain
+      cache_from:
+        - api_gateway:latest
+      labels:
+        - "build.logs=true"
+    image: api_gateway:latest
+    container_name: job_hunter_api
+    environment:
+      - TZ=Asia/Shanghai
+      # PostgreSQL 配置
+      - POSTGRES_HOST=postgresql
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=job_hunter
+      # Redis 配置
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Meilisearch 配置
+      - MEILISEARCH_HOST=http://meilisearch:7700
+      - MEILISEARCH_MASTER_KEY=job_hunter_key
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../projects/api-gateway:/app
+      - api_gateway_cache:/root/.cache
+    networks:
+      - job_hunter_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    restart: unless-stopped
+
+volumes:
+  api_gateway_cache:
+    driver: local
+
+networks:
+  job_hunter_net:
+    external: true 

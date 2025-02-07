@@ -1,0 +1,18 @@
+{
+    "host": "localhost",
+    "port": 5672,
+    "username": "guest",
+    "password": "guest",
+    "virtual_host": "/",
+    "exchange": {
+        "name": "job_crawler",
+        "type": "direct",
+        "durable": true
+    },
+    "queue": {
+        "name": "crawler-results",
+        "durable": true,
+        "auto_delete": false
+    },
+    "routing_key": "crawler.result"
+} 

@@ -1,0 +1,29 @@
+services:
+  scheduler-service:
+    build:
+      context: ../projects/scheduler
+      dockerfile: Dockerfile
+    container_name: job_hunter_scheduler
+    environment:
+      - PG_HOST=host.docker.internal
+      - PG_PORT=5432
+      - PG_USER=postgres
+      - PG_PASSWORD=postgres
+      - PG_DB=job_hunter
+      - RABBITMQ_HOST=job_hunter_mq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+      - API_HOST=0.0.0.0
+      - API_PORT=8001
+    ports:
+      - "8001:8001"
+    networks:
+      - job_hunter_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  job_hunter_net:
+    external: true
+    name: job_hunter_net 

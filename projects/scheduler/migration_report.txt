@@ -1,0 +1,17 @@
+
+迁移验证报告
+============
+时间: 2025-01-01 17:37:00.918763
+
+数据对比:
+- scheduler_jobs 表:
+  * MySQL: 4 条记录
+  * PostgreSQL: 4 条记录
+  * 结果: 匹配
+
+- job_execution_history 表:
+  * MySQL: 1361 条记录
+  * PostgreSQL: 1361 条记录
+  * 结果: 匹配
+
+迁移状态: 成功

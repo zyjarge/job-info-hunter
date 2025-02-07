@@ -1,0 +1,96 @@
+name: job_hunter
+
+services:
+  # 基础设施服务
+  rabbitmq:
+    extends:
+      file: docker-compose-infra.yml
+      service: rabbitmq
+
+  etcd:
+    extends:
+      file: docker-compose-infra.yml
+      service: etcd
+
+  postgresql:
+    extends:
+      file: docker-compose-infra.yml
+      service: postgresql
+
+  meilisearch:
+    extends:
+      file: docker-compose-infra.yml
+      service: meilisearch
+
+  # 应用服务
+  scheduler-service:
+    extends:
+      file: docker-compose-scheduler.yml
+      service: scheduler-service
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+
+  crawler:
+    extends:
+      file: docker-compose-crawler.yml
+      service: crawler
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  job_data_service:
+    extends:
+      file: docker-compose-data.yml
+      service: job_data_service
+    depends_on:
+      meilisearch:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  api-gateway:
+    extends:
+      file: docker-compose-api.yml
+      service: api-gateway
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+
+  frontend:
+    extends:
+      file: docker-compose-frontend.yml
+      service: frontend
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+
+networks:
+  job_hunter_net:
+    name: job_hunter_net
+    driver: bridge
+
+volumes:
+  # 基础设施服务的数据卷
+  rabbitmq_data:
+    driver: local
+  etcd_data:
+    driver: local
+  postgres_data:
+    driver: local
+  meilisearch_data:
+    driver: local
+  
+  # API 网关的数据卷
+  api_gateway_cache:
+    driver: local
+  
+  # 前端服务的数据卷
+  frontend_node_modules:
+    driver: local
+  frontend_build_cache:
+    driver: local 

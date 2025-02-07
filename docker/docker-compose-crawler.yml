@@ -1,0 +1,30 @@
+services:
+  crawler:
+    build: 
+      context: ../projects/job-crawler-python
+      dockerfile: Dockerfile
+      cache_from:
+        - job_crawler:latest
+    image: job_crawler:latest
+    container_name: job_crawler
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ../projects/job-crawler-python/logs:/app/logs
+      - ../projects/job-crawler-python/data:/app/data
+      - ../projects/job-crawler-python/conf:/app/conf
+    networks:
+      - job_hunter_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+networks:
+  job_hunter_net:
+    external: true
